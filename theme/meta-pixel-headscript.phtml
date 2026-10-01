@@ -1,0 +1,76 @@
+<?php // Included via ServiceThemeBlocks::render('head', [...]) by a real theme's
+// own <head> template - see that class's doc comment. Expects $site (for the
+// environment check) in the render context; loads its own config via
+// MetaPixelConfig so the theme passes nothing service-specific.
+//
+// Consent: the pixel is initialised with consent revoked, which stops Meta
+// setting cookies or sending events. It is granted only if
+// window.OsmiumCookieConsent.cookieName (a documented client-side convention,
+// set by whatever consent service is on the page, if any) reads 'accepted'.
+// With no consent service present the pixel stays revoked, so this errs
+// towards not tracking. No <noscript> pixel fallback: it would fire without
+// consent, and visitors without JS can't give consent via the banner. ?>
+<?php
+use Osmium\Services\MetaPixel\Models\MetaPixelConfig;
+
+$metaPixel = MetaPixelConfig::get();
+$pixelEnabled = $metaPixel->enabled ?? false;
+$pixelId = (string) ($metaPixel->pixelId ?? '');
+$pixelIdValid = MetaPixelConfig::isValidPixelId($pixelId);
+$isProduction = !\in_array($site['environment'] ?? '', ['dev', 'staging'], true);
+$shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on production
+?>
+<?php if ($shouldLoad): ?>
+    <link rel="preconnect" href="https://connect.facebook.net" />
+    <!-- Meta Pixel (deferred until idle or first interaction; consent revoked until accepted) -->
+    <script>
+        (function(w, d, s, pixelId) {
+            if (w.fbq) return;
+            var n = w.fbq = function() {
+                n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+            };
+            if (!w._fbq) w._fbq = n;
+            n.push = n;
+            n.loaded = true;
+            n.version = '2.0';
+            n.queue = [];
+
+            w.fbq('consent', 'revoke');
+            w.fbq('init', pixelId);
+            w.fbq('track', 'PageView');
+
+            var cookieName = w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName;
+            if (cookieName) {
+                var m = d.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)'));
+                if (m && decodeURIComponent(m[1]) === 'accepted') {
+                    w.fbq('consent', 'grant');
+                }
+            }
+
+            var loaded = false;
+
+            function load() {
+                if (loaded) return;
+                loaded = true;
+                var t = d.createElement(s),
+                    f = d.getElementsByTagName(s)[0];
+                t.async = true;
+                t.src = 'https://connect.facebook.net/en_US/fbevents.js';
+                f.parentNode.insertBefore(t, f);
+                events.forEach(function(e) {
+                    w.removeEventListener(e, load);
+                });
+                clearTimeout(idleTimer);
+            }
+            var events = ['scroll', 'click', 'keydown', 'touchstart', 'mousemove'];
+            events.forEach(function(e) {
+                w.addEventListener(e, load, {
+                    passive: true,
+                    once: true
+                });
+            });
+            var idleTimer = setTimeout(load, 5000);
+        })(window, document, 'script', '<?php echo \htmlspecialchars($pixelId, ENT_QUOTES); ?>');
+    </script>
+    <!-- End Meta Pixel -->
+<?php endif; ?>

@@ -1,0 +1,58 @@
+{
+    "id": "meta-pixel",
+    "name": "Meta Pixel",
+    "version": "1.0.0",
+    "description": "Meta (Facebook/Instagram) Pixel PageView tracking, consent-gated, gated on an admin-editable toggle and production-only",
+    "category": "marketing-analytics",
+    "author": {
+        "name": "Gavin Cox"
+    },
+    "license": "proprietary",
+
+    "requires": {
+        "osmium": ">=1.0.0",
+        "php": ">=8.1",
+        "services": []
+    },
+
+    "autoload": [
+        "models"
+    ],
+
+    "admin": {
+        "menu": {
+            "section": "Content",
+            "items": [
+                {
+                    "id": "meta-pixel",
+                    "label": "Meta Pixel",
+                    "icon": "bx bxl-meta",
+                    "route": "admin/settings/meta-pixel",
+                    "activePattern": "admin/settings/meta-pixel",
+                    "role": null
+                }
+            ]
+        },
+        "routes": {
+            "admin/settings/meta-pixel": {
+                "controller": "controllers/MetaPixelController.php",
+                "class": "Osmium\\Services\\MetaPixel\\Controllers\\MetaPixelController",
+                "method": "index",
+                "title": "Meta Pixel"
+            }
+        }
+    },
+
+    "frontend": {
+        "themeBlocks": [
+            {
+                "hook": "head",
+                "file": "theme/meta-pixel-headscript.phtml"
+            }
+        ]
+    },
+
+    "setup": {
+        "postInstallNote": "Disabled by default. A theme must call ServiceThemeBlocks::render('head', ['site' => $site]) in its <head> template before enabling this does anything visible. Tracks PageView only - shop events (ViewContent, AddToCart, Purchase) aren't included."
+    }
+}
