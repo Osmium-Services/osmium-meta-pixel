@@ -6,7 +6,9 @@
 // Consent: the pixel is initialised with consent revoked, which stops Meta
 // setting cookies or sending events. It is granted only if
 // window.OsmiumCookieConsent.cookieName (a documented client-side convention,
-// set by whatever consent service is on the page, if any) reads 'accepted'.
+// set by whatever consent service is on the page, if any; falls back to the
+// default cookie name so block render order doesn't matter) reads 'accepted'.
+// Cookie Consent's accept/reject buttons also call fbq('consent', ...) live.
 // With no consent service present the pixel stays revoked, so this errs
 // towards not tracking. No <noscript> pixel fallback: it would fire without
 // consent, and visitors without JS can't give consent via the banner. ?>
@@ -39,7 +41,7 @@ $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on 
             w.fbq('init', pixelId);
             w.fbq('track', 'PageView');
 
-            var cookieName = w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName;
+            var cookieName = (w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName) || 'osmium_cookie_consent';
             if (cookieName) {
                 var m = d.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)'));
                 if (m && decodeURIComponent(m[1]) === 'accepted') {
