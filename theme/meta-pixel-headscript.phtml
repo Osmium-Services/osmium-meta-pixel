@@ -1,7 +1,7 @@
 <?php // Included via ServiceThemeBlocks::render('head', [...]) by a real theme's
 // own <head> template - see that class's doc comment. Expects $site (for the
-// environment check) in the render context; loads its own config via
-// MetaPixelConfig so the theme passes nothing service-specific.
+// environment check) and $metaPixel (this service's config, injected by the
+// loader) in the render context.
 //
 // Consent: the pixel is initialised with consent revoked, which stops Meta
 // setting cookies or sending events. It is granted only if
@@ -13,12 +13,14 @@
 // towards not tracking. No <noscript> pixel fallback: it would fire without
 // consent, and visitors without JS can't give consent via the banner. ?>
 <?php
-use Osmium\Services\MetaPixel\Models\MetaPixelConfig;
-
-$metaPixel = MetaPixelConfig::get();
-$pixelEnabled = $metaPixel->enabled ?? false;
-$pixelId = (string) ($metaPixel->pixelId ?? '');
-$pixelIdValid = MetaPixelConfig::isValidPixelId($pixelId);
+// $metaPixel is this service's own config, injected by the loader under its
+// service id (see ServiceLoader::serviceConfigContext()). Deliberately not read
+// via MetaPixelConfig::get() here: if its class can't be autoloaded (e.g. right
+// after an install) the page would fatal, whereas an absent context just
+// renders nothing.
+$pixelEnabled = $metaPixel['enabled'] ?? false;
+$pixelId = (string) ($metaPixel['pixelId'] ?? '');
+$pixelIdValid = \preg_match(pattern: '/^\d{15,16}$/', subject: $pixelId) === 1; // Same rule as MetaPixelConfig::isValidPixelId()
 $isProduction = !\in_array($site['environment'] ?? '', ['dev', 'staging'], true);
 $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on production
 ?>

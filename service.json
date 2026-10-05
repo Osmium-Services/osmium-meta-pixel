@@ -1,7 +1,7 @@
 {
     "id": "meta-pixel",
     "name": "Meta Pixel",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Meta (Facebook/Instagram) Pixel PageView tracking, consent-gated, gated on an admin-editable toggle and production-only",
     "category": "marketing-analytics",
     "author": {
