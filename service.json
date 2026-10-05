@@ -1,8 +1,8 @@
 {
     "id": "meta-pixel",
     "name": "Meta Pixel",
-    "version": "1.0.4",
-    "description": "Meta (Facebook/Instagram) Pixel PageView tracking, consent-gated, gated on an admin-editable toggle and production-only",
+    "version": "1.1.0",
+    "description": "Meta (Facebook/Instagram) Pixel PageView tracking, consent-gated, gated on an admin-editable toggle and production-only; requires the Cookie Consent service",
     "category": "marketing-analytics",
     "author": {
         "name": "Gavin Cox"
@@ -12,7 +12,7 @@
     "requires": {
         "osmium": ">=1.0.0",
         "php": ">=8.1",
-        "services": []
+        "services": ["cookie-consent"]
     },
 
     "autoload": [

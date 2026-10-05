@@ -3,6 +3,9 @@
 // environment check) and $metaPixel (this service's config, injected by the
 // loader) in the render context.
 //
+// This service requires Cookie Consent to be installed (service.json
+// requires.services), but has no PHP-level coupling to it.
+//
 // Consent: the pixel is initialised with consent revoked, which stops Meta
 // setting cookies or sending events. It is granted only if
 // window.OsmiumCookieConsent.cookieName (a documented client-side convention,
