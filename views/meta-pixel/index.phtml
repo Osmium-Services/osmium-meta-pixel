@@ -21,6 +21,14 @@
     </div>
 <?php endif; ?>
 
+<div class="alert alert-info" role="alert">
+    <i class="bx bx-info-circle me-1"></i>
+    <strong>Needs a consent tool.</strong> The pixel starts with consent revoked and sends nothing until a visitor
+    accepts cookies. It reads the <code>osmium_cookie_consent</code> cookie (or the name in
+    <code>window.OsmiumCookieConsent.cookieName</code>) and grants consent only when it is <code>accepted</code>.
+    The Cookie Consent service sets this cookie; without it (or another tool that does) nothing is ever tracked.
+</div>
+
 <form method="POST" action="<?= $admin['basePath'] ?>settings/meta-pixel/" id="settings-form">
     <input type="hidden" name="token" value="<?= $template['formToken'] ?? '' ?>">
     <div class="row justify-content-center">

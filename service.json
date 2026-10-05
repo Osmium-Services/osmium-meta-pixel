@@ -1,7 +1,7 @@
 {
     "id": "meta-pixel",
     "name": "Meta Pixel",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Meta (Facebook/Instagram) Pixel PageView tracking, consent-gated, gated on an admin-editable toggle and production-only",
     "category": "marketing-analytics",
     "author": {
@@ -18,6 +18,11 @@
     "autoload": [
         "models"
     ],
+
+    "csp": {
+        "script-src": ["https://connect.facebook.net"],
+        "connect-src": ["https://www.facebook.com", "https://connect.facebook.net"]
+    },
 
     "admin": {
         "menu": {
@@ -53,6 +58,6 @@
     },
 
     "setup": {
-        "postInstallNote": "Disabled by default. A theme must call ServiceThemeBlocks::render('head', ['site' => $site]) in its <head> template before enabling this does anything visible. Tracks PageView only - shop events (ViewContent, AddToCart, Purchase) aren't included."
+        "postInstallNote": "Disabled by default. A theme must call ServiceThemeBlocks::render('head', ['site' => $site]) in its <head> template before enabling this does anything visible. Needs a consent tool: the pixel sends nothing until a cookie named osmium_cookie_consent (or window.OsmiumCookieConsent.cookieName) reads 'accepted' - the Cookie Consent service does this. Tracks PageView only - shop events (ViewContent, AddToCart, Purchase) aren't included."
     }
 }
