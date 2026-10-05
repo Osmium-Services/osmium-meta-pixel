@@ -7,7 +7,9 @@
 // requires.services), but has no PHP-level coupling to it.
 //
 // Consent: the pixel is initialised with consent revoked, which stops Meta
-// setting cookies or sending events. It is granted only if
+// setting cookies or sending events. For a visitor whose cookie already reads
+// 'accepted' consent is granted before init instead (granting after the
+// PageView was measured to leave it unsent). Otherwise it is granted only if
 // window.OsmiumCookieConsent.cookieName (a documented client-side convention,
 // set by whatever consent service is on the page, if any; falls back to the
 // default cookie name so block render order doesn't matter) reads 'accepted'.
@@ -42,17 +44,13 @@ $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on 
             n.version = '2.0';
             n.queue = [];
 
-            w.fbq('consent', 'revoke');
+            var cookieName = (w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName) || 'osmium_cookie_consent';
+            var m = cookieName ? d.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)')) : null;
+            var accepted = !!m && decodeURIComponent(m[1]) === 'accepted';
+
+            w.fbq('consent', accepted ? 'grant' : 'revoke');
             w.fbq('init', pixelId);
             w.fbq('track', 'PageView');
-
-            var cookieName = (w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName) || 'osmium_cookie_consent';
-            if (cookieName) {
-                var m = d.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)'));
-                if (m && decodeURIComponent(m[1]) === 'accepted') {
-                    w.fbq('consent', 'grant');
-                }
-            }
 
             // Live update when a consent tool fires 'osmium:consent' (detail.value 'accepted' / 'rejected').
             d.addEventListener('osmium:consent', function(e) {
