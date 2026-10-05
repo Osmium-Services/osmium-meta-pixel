@@ -8,7 +8,7 @@
 // window.OsmiumCookieConsent.cookieName (a documented client-side convention,
 // set by whatever consent service is on the page, if any; falls back to the
 // default cookie name so block render order doesn't matter) reads 'accepted'.
-// Cookie Consent's accept/reject buttons also call fbq('consent', ...) live.
+// Cookie Consent's accept/reject buttons fire an 'osmium:consent' event, which this block listens for.
 // With no consent service present the pixel stays revoked, so this errs
 // towards not tracking. No <noscript> pixel fallback: it would fire without
 // consent, and visitors without JS can't give consent via the banner. ?>
@@ -50,6 +50,11 @@ $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on 
                     w.fbq('consent', 'grant');
                 }
             }
+
+            // Live update when a consent tool fires 'osmium:consent' (detail.value 'accepted' / 'rejected').
+            d.addEventListener('osmium:consent', function(e) {
+                w.fbq('consent', e.detail && e.detail.value === 'accepted' ? 'grant' : 'revoke');
+            });
 
             var loaded = false;
 
