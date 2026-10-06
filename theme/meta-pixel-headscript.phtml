@@ -6,8 +6,12 @@
 // This service requires Cookie Consent to be installed (service.json
 // requires.services), but has no PHP-level coupling to it.
 //
-// Consent: the pixel is initialised with consent revoked, which stops Meta
-// setting cookies or sending events. For a visitor whose cookie already reads
+// Consent: nothing is fetched from Meta until the visitor has accepted cookies,
+// so Meta receives no request (and no IP address) from a visitor who has not
+// consented. fbevents.js is loaded only for a visitor whose cookie already
+// reads 'accepted', or the moment Accept is clicked (osmium:consent). Until
+// then fbq only queues calls in memory. The pixel is initialised with consent
+// revoked, which stops Meta setting cookies or sending events. For a visitor whose cookie already reads
 // 'accepted' consent is granted before init instead (granting after the
 // PageView was measured to leave it unsent). Otherwise it is granted only if
 // window.OsmiumCookieConsent.cookieName (a documented client-side convention,
@@ -31,8 +35,7 @@ $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on 
 $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in $metaPixel is never printed here
 ?>
 <?php if ($shouldLoad): ?>
-    <link rel="preconnect" href="https://connect.facebook.net" />
-    <!-- Meta Pixel (deferred until idle or first interaction; consent revoked until accepted) -->
+    <!-- Meta Pixel (fbevents.js loads only once the visitor has accepted cookies; consent revoked until then) -->
     <script>
         (function(w, d, s, pixelId) {
             if (w.fbq) return;
@@ -48,6 +51,7 @@ $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in
             var cookieName = (w.OsmiumCookieConsent && w.OsmiumCookieConsent.cookieName) || 'osmium_cookie_consent';
             var m = cookieName ? d.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)')) : null;
             var accepted = !!m && decodeURIComponent(m[1]) === 'accepted';
+            var granted = accepted; // Latest consent state, read again once fbevents.js has loaded
 
             w.fbq('consent', accepted ? 'grant' : 'revoke');
             w.fbq('init', pixelId);
@@ -55,7 +59,10 @@ $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in
 
             // Live update when a consent tool fires 'osmium:consent' (detail.value 'accepted' / 'rejected').
             d.addEventListener('osmium:consent', function(e) {
-                w.fbq('consent', e.detail && e.detail.value === 'accepted' ? 'grant' : 'revoke');
+                var nowAccepted = !!(e.detail && e.detail.value === 'accepted');
+                granted = nowAccepted;
+                w.fbq('consent', nowAccepted ? 'grant' : 'revoke');
+                if (nowAccepted) load(); // First time consent is given: only now is Meta contacted
             });
 
 <?php if ($shopEvents): ?>
@@ -129,6 +136,9 @@ $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in
                     f = d.getElementsByTagName(s)[0];
                 t.async = true;
                 t.src = 'https://connect.facebook.net/en_US/fbevents.js';
+                // fbevents.js works through the queued calls up to the first 'revoke' and then holds everything
+                // after it, including a 'grant' queued before it loaded. Granting again now it is live releases them.
+                t.onload = function() { if (granted) w.fbq('consent', 'grant'); };
                 f.parentNode.insertBefore(t, f);
                 events.forEach(function(e) {
                     w.removeEventListener(e, load);
@@ -136,13 +146,16 @@ $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in
                 clearTimeout(idleTimer);
             }
             var events = ['scroll', 'click', 'keydown', 'touchstart', 'mousemove'];
-            events.forEach(function(e) {
-                w.addEventListener(e, load, {
-                    passive: true,
-                    once: true
+            var idleTimer;
+            if (accepted) { // Returning visitor who already accepted: load deferred, as before
+                events.forEach(function(e) {
+                    w.addEventListener(e, load, {
+                        passive: true,
+                        once: true
+                    });
                 });
-            });
-            var idleTimer = setTimeout(load, 5000);
+                idleTimer = setTimeout(load, 5000);
+            }
         })(window, document, 'script', '<?php echo \htmlspecialchars($pixelId, ENT_QUOTES); ?>');
     </script>
     <!-- End Meta Pixel -->
