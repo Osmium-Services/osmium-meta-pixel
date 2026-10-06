@@ -22,7 +22,11 @@ class MetaPixelController extends AdminController
         {
             "metaPixel": {
                 "enabled": false,
-                "pixelId": ""
+                "pixelId": "",
+                "shopEvents": false,
+                "serverEvents": false,
+                "accessToken": "",
+                "testEventCode": ""
             }
         }
         JSON;
@@ -32,7 +36,10 @@ class MetaPixelController extends AdminController
         $isPost = $this->isPost();
         if ($isPost) $this->handleSubmit();
 
-        $this->data['admin']['config']['metaPixel'] = (array) MetaPixelConfig::get();
+        $config = (array) MetaPixelConfig::get();
+        $config['accessTokenSet'] = ($config['accessToken'] ?? '') !== '';
+        unset($config['accessToken']); // The saved token never reaches the page
+        $this->data['admin']['config']['metaPixel'] = $config;
         $this->data['admin']['settingsSaved'] = $_SESSION['meta_pixel_settings_saved'] ?? false;
         $this->data['admin']['settingsError'] = $_SESSION['meta_pixel_settings_error'] ?? false;
         unset($_SESSION['meta_pixel_settings_saved'], $_SESSION['meta_pixel_settings_error']);
@@ -58,7 +65,37 @@ class MetaPixelController extends AdminController
             $this->redirect('settings/meta-pixel/');
         }
 
-        $this->saveConfig($enabled, $pixelId);
+        $shopEvents = isset($_POST['shop_events']);
+        $serverEvents = isset($_POST['server_events']);
+        $postedToken = \trim($_POST['access_token'] ?? '');
+        $accessToken = $postedToken === '' ? (string) (MetaPixelConfig::get()->accessToken ?? '') : $postedToken; // Blank keeps the stored secret
+        $testEventCode = \trim($_POST['test_event_code'] ?? '');
+
+        $tokenValid = \preg_match('/^[A-Za-z0-9_\-]*$/', $accessToken) === 1; // Meta tokens are letters, digits, _ and -
+        if (!$tokenValid) {
+            $_SESSION['meta_pixel_settings_error'] = 'Access token has characters Meta tokens do not use. Paste only the token.';
+            $this->redirect('settings/meta-pixel/');
+        }
+
+        $testCodeValid = \preg_match('/^[A-Za-z0-9]*$/', $testEventCode) === 1;
+        if (!$testCodeValid) {
+            $_SESSION['meta_pixel_settings_error'] = 'Test event code is letters and digits only (for example TEST12345).';
+            $this->redirect('settings/meta-pixel/');
+        }
+
+        if ($serverEvents && ($accessToken === '' || !$pixelIdValid)) {
+            $_SESSION['meta_pixel_settings_error'] = 'Server events need a valid Pixel ID and an access token.';
+            $this->redirect('settings/meta-pixel/');
+        }
+
+        $this->saveConfig(
+            enabled: $enabled,
+            pixelId: $pixelId,
+            shopEvents: $shopEvents,
+            serverEvents: $serverEvents,
+            accessToken: $accessToken,
+            testEventCode: $testEventCode,
+        );
 
         $this->admin->model->changelog->log(
             description: 'Updated Meta Pixel settings',
@@ -71,7 +108,14 @@ class MetaPixelController extends AdminController
         $this->redirect('settings/meta-pixel/');
     }
 
-    private function saveConfig(bool $enabled, string $pixelId): void
+    private function saveConfig(
+        bool $enabled,
+        string $pixelId,
+        bool $shopEvents,
+        bool $serverEvents,
+        string $accessToken,
+        string $testEventCode,
+    ): void
     {
         $configExists = \file_exists(self::CONFIG_FILE_PATH);
         if (!$configExists) $this->ensureConfigDirectoryExists();
@@ -82,7 +126,14 @@ class MetaPixelController extends AdminController
         $phpHeader = \substr(string: $content, offset: 0, length: $jsonStart);
         $data = \json_decode(\substr(string: $content, offset: $jsonStart), associative: true) ?? [];
 
-        $data['metaPixel'] = ['enabled' => $enabled, 'pixelId' => $pixelId];
+        $data['metaPixel'] = [
+            'enabled' => $enabled,
+            'pixelId' => $pixelId,
+            'shopEvents' => $shopEvents,
+            'serverEvents' => $serverEvents,
+            'accessToken' => $accessToken,
+            'testEventCode' => $testEventCode,
+        ];
 
         $newJson = \json_encode(
             value: $data,

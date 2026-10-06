@@ -28,6 +28,7 @@ $pixelId = (string) ($metaPixel['pixelId'] ?? '');
 $pixelIdValid = \preg_match(pattern: '/^\d{15,16}$/', subject: $pixelId) === 1; // Same rule as MetaPixelConfig::isValidPixelId()
 $isProduction = !\in_array($site['environment'] ?? '', ['dev', 'staging'], true);
 $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on production
+$shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in $metaPixel is never printed here
 ?>
 <?php if ($shouldLoad): ?>
     <link rel="preconnect" href="https://connect.facebook.net" />
@@ -56,6 +57,68 @@ $shouldLoad = $pixelEnabled && $pixelIdValid && $isProduction; // Pixel only on 
             d.addEventListener('osmium:consent', function(e) {
                 w.fbq('consent', e.detail && e.detail.value === 'accepted' ? 'grant' : 'revoke');
             });
+
+<?php if ($shopEvents): ?>
+            // Shop events. Consent is still revoked here until the visitor accepts, so Meta holds these until then.
+            // Core's osmium:shop-event (view_item, purchase) and osmium:basket-added (add to cart) are vendor-neutral;
+            // this maps them to Meta's standard events.
+            function money(n) { return Math.round(Number(n) * 100) / 100; }
+
+            function onShopEvent(detail) {
+                if (!detail) return;
+                if (detail.type === 'view_item') {
+                    w.fbq('track', 'ViewContent', {
+                        content_ids: [String(detail.product_id)],
+                        content_type: 'product',
+                        content_name: detail.title,
+                        value: money(detail.value),
+                        currency: detail.currency
+                    });
+                } else if (detail.type === 'purchase') {
+                    var items = detail.items || [];
+                    var count = 0;
+                    items.forEach(function(i) { count += i.quantity; });
+                    w.fbq('track', 'Purchase', {
+                        value: money(detail.value),
+                        currency: detail.currency,
+                        content_type: 'product',
+                        content_ids: items.map(function(i) { return String(i.product_id); }),
+                        contents: items.map(function(i) { return { id: String(i.product_id), quantity: i.quantity, item_price: i.unit_price_inc_tax }; }),
+                        num_items: count
+                    }, { eventID: detail.order_ref }); // Same id the server Purchase uses, so Meta counts the sale once
+                }
+            }
+
+            (w.osmiumShopEvents || []).forEach(onShopEvent); // Fired before this block's listener existed
+            d.addEventListener('osmium:shop-event', function(e) { onShopEvent(e.detail); });
+
+            d.addEventListener('osmium:basket-added', function(e) {
+                var link = e.target;
+                var productId = link && link.getAttribute ? link.getAttribute('data-product-id') : null;
+                if (!productId) return;
+
+                var form = link.closest('form');
+                var qtyField = form ? form.querySelector('#qty') : null;
+                var qty = (qtyField && parseInt(qtyField.value, 10)) || 1;
+
+                var params = { content_ids: [String(productId)], content_type: 'product', contents: [{ id: String(productId), quantity: qty }] };
+
+                // The basket response prices the whole line, so work out one unit and multiply by what was added.
+                var lines = (e.detail && e.detail.lines) || [];
+                for (var i = 0; i < lines.length; i++) {
+                    if (String(lines[i].product_id) !== String(productId) || !lines[i].quantity) continue;
+                    var unit = (Number(lines[i].line_total_exc_tax) + Number(lines[i].line_tax_amount)) / lines[i].quantity;
+                    if (isFinite(unit)) {
+                        params.value = money(unit * qty);
+                        params.contents[0].item_price = money(unit);
+                        params.currency = (e.detail && e.detail.currency) || undefined;
+                    }
+                    break;
+                }
+
+                w.fbq('track', 'AddToCart', params);
+            });
+<?php endif; ?>
 
             var loaded = false;
 

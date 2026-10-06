@@ -46,7 +46,7 @@ class MetaPixelConfig
         $json = \substr(string: $content, offset: $jsonStart);
         $decoded = \json_decode($json);
 
-        self::$config = $decoded->metaPixel ?? self::defaults();
+        self::$config = (object) ((array) ($decoded->metaPixel ?? []) + (array) self::defaults()); // Older saved files lack the newer keys
 
         return self::$config;
     }
@@ -65,11 +65,34 @@ class MetaPixelConfig
         return \preg_match(pattern: '/^\d{15,16}$/', subject: $pixelId) === 1;
     }
 
+    /**
+     * The site's environment from core's config file. Hook handlers run with
+     * no page context ($site), so they read it here. Empty when unreadable,
+     * which callers treat as production-like only after checking dev/staging.
+     */
+    public static function siteEnvironment(): string
+    {
+        $file = 'app/config/config.json.php';
+        if (!\file_exists($file)) return '';
+
+        $content = (string) \file_get_contents($file);
+        $jsonStart = \strpos(haystack: $content, needle: '{');
+        if ($jsonStart === false) return '';
+
+        $decoded = \json_decode(\substr(string: $content, offset: $jsonStart));
+
+        return (string) ($decoded->site->environment ?? '');
+    }
+
     private static function defaults(): object
     {
         return (object) [
             'enabled' => false,
             'pixelId' => '',
+            'shopEvents' => false,
+            'serverEvents' => false,
+            'accessToken' => '',
+            'testEventCode' => '',
         ];
     }
 }
