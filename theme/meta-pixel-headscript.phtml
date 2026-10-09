@@ -36,7 +36,7 @@ $shopEvents = (bool) ($metaPixel['shopEvents'] ?? false); // The access token in
 ?>
 <?php if ($shouldLoad): ?>
     <!-- Meta Pixel (fbevents.js loads only once the visitor has accepted cookies; consent revoked until then) -->
-    <script>
+    <script nonce="<?= $cspNonce ?? '' ?>">
         (function(w, d, s, pixelId) {
             if (w.fbq) return;
             var n = w.fbq = function() {
