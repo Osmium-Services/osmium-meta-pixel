@@ -239,7 +239,6 @@ class MetaServerEvents
         $response = \curl_exec($curl);
         $status = (int) \curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
         $curlError = \curl_error($curl);
-        \curl_close($curl);
 
         if ($response === false) return "error: {$curlError}";
 
