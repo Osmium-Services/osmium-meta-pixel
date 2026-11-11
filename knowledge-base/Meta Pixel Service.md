@@ -1,6 +1,6 @@
 # Meta Pixel Service
 
-Repo: `Osmium-Services/osmium-meta-pixel`, service id `meta-pixel`, category marketing-analytics. Currently v1.2.6<!--v:meta-pixel-->. v1.2.0 added shop events and the server-side Conversions API Purchase; v1.2.1 stops contacting Meta before consent.
+Repo: `Osmium-Services/osmium-meta-pixel`, service id `meta-pixel`, category marketing-analytics. Currently v1.2.7<!--v:meta-pixel-->. v1.2.0 added shop events and the server-side Conversions API Purchase; v1.2.1 stops contacting Meta before consent.
 
 ## What it does
 
