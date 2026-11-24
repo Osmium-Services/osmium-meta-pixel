@@ -1,6 +1,7 @@
 ---
 title: Add the Meta (Facebook and Instagram) Pixel
 tags: meta pixel, facebook, instagram, conversions api, purchase, advertising, tracking
+page: admin/settings/meta-pixel
 ---
 
 The **Meta Pixel** tells Meta how visitors use your site, so you can measure and improve your Facebook and Instagram adverts. It stays off until the visitor accepts cookies, so the **Cookie Consent** service must be installed.
